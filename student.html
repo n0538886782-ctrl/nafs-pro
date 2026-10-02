@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>تدريب نافس - الطالب</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.wrap{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:14px 14px 40px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#fff;margin-bottom:12px}
+.top b{font-size:1.1rem} .top small{display:block;opacity:.9}
+.out{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:10px;padding:8px 14px;font:inherit;cursor:pointer}
+.panel{background:rgba(255,255,255,.96);border-radius:20px;padding:18px;box-shadow:0 14px 36px rgba(5,30,90,.3);margin-bottom:14px}
+.grid{display:grid;gap:14px}
+.sub h3{margin:0 0 4px;font-size:1.25rem;color:var(--navy)}
+.lv{display:inline-block;color:#fff;border-radius:20px;padding:2px 12px;font-weight:700;font-size:.9rem}
+.sub p{margin:6px 0;color:#4a6290;font-size:.92rem}
+.bars{display:flex;align-items:flex-end;gap:4px;height:44px;margin:8px 0}
+.bars i{flex:0 0 16px;border-radius:4px 4px 0 0}
+.timer{position:sticky;top:0;z-index:5;background:var(--navy);color:#fff;border-radius:14px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-weight:700}
+.timer span{font-size:1.5rem;font-variant-numeric:tabular-nums} .timer.low{background:var(--bad)}
+.dots{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.dot{width:40px;height:40px;border-radius:10px;border:2px solid #cfe0f7;background:#fff;font:inherit;font-weight:700;cursor:pointer}
+.dot.done{background:#dcebff;border-color:var(--royal)} .dot.cur{background:var(--royal);color:#fff}
+.dot.flag{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber)}
+#qbox h2{font-size:1.25rem;margin:4px 0 14px;line-height:1.8} #qbox img{max-width:100%;border-radius:12px;margin-bottom:12px}
+.skill{color:#5b6f98;font-size:.85rem;margin:0}
+.opt{display:block;width:100%;text-align:right;min-height:52px;margin:8px 0;padding:10px 14px;border:2px solid #cfe0f7;border-radius:13px;background:#fff;font:inherit;font-size:1.05rem;cursor:pointer}
+.opt.sel{border-color:var(--royal);background:#e3efff;font-weight:700}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ctl button{flex:1;min-height:46px;border-radius:12px;border:2px solid var(--royal);background:#fff;color:var(--royal);font:inherit;font-weight:700;cursor:pointer}
+.ctl button[disabled]{opacity:.4}
+.ctl .fin{background:var(--bad);border-color:var(--bad);color:#fff;flex-basis:100%}
+.score{text-align:center} .score big{display:block;font-size:3rem;font-weight:800;color:var(--navy);line-height:1.2}
+.rb{display:flex;gap:3px;height:16px;margin:12px 0;border-radius:8px;overflow:hidden}
+.rb i{flex:1;background:var(--ok)} .rb i.r{background:var(--bad)}
+.it{border-right:6px solid var(--ok);padding:8px 12px;margin:10px 0;background:#f4f9ff;border-radius:10px}
+.it.r{border-color:var(--bad)} .it p{margin:3px 0}
+.good{color:#0c6b3b;font-weight:700} .badc{color:#a62323;font-weight:700}
+.pt{float:left;background:var(--ice);border-radius:8px;padding:0 10px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="sky" id="sky" aria-hidden="true"></div>
+<div class="wrap">
+  <div class="top"><div><b id="who"></b><small>تدريب نافس</small></div><button class="out" id="out">خروج</button></div>
+
+  <section id="home"><div class="grid" id="subs"><div class="panel">جارٍ التحميل...</div></div></section>
+
+  <section id="quiz" hidden>
+    <div class="timer" id="tbar"><div id="tsub"></div><span id="tm">45:00</span></div>
+    <div class="panel">
+      <div class="dots" id="nav"></div>
+      <div id="qbox"></div>
+      <div class="ctl">
+        <button id="prev">السابق</button><button id="flagBtn">علّم للمراجعة</button><button id="next">التالي</button>
+        <button class="fin" id="fin">إنهاء الاختبار</button>
+      </div>
+      <p class="hint" id="saveMsg">تُحفظ إجابتك تلقائياً عند اختيارها.</p>
+    </div>
+  </section>
+
+  <section id="result" hidden><div class="panel" id="rbox"></div></section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SUBJ = { math: ['الرياضيات', '🔢'], arabic: ['لغتي', '📖'], science: ['العلوم', '🔬'] };
+const LV = p => p >= 90 ? ['متقدم', '#14a35c'] : p >= 75 ? ['متمكن', '#1b5fd6'] : p >= 50 ? ['متوسط', '#d99a00'] : ['يحتاج دعماً', '#e03e3e'];
+let uid, me, st = {};
+const show = id => ['home', 'quiz', 'result'].forEach(s => $(s).hidden = s !== id);
+
+(function () { let h = ''; for (let i = 0; i < 10; i++) { const s = 30 + Math.random() * 80;
+  h += `<i style="width:${s}px;height:${s}px;left:${Math.random()*100}%;--dx:${(Math.random()*60-30).toFixed(0)}px;animation-duration:${16+Math.random()*16}s;animation-delay:${-Math.random()*20}s"></i>`; }
+  $('sky').innerHTML = h; })();
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return location.href = 'index.html';
+  uid = session.user.id;
+  const { data: p } = await sb.from('profiles').select('full_name,grade,class_no,role,is_active').eq('id', uid).maybeSingle();
+  if (!p || !p.is_active) { await sb.auth.signOut(); return location.href = 'index.html'; }
+  if (p.role === 'admin') return location.href = 'admin.html';
+  me = p;
+  $('who').textContent = `${p.full_name} - ${p.grade === 'p6' ? 'سادس' : 'ثالث متوسط'} ${p.class_no}`;
+  home();
+}
+$('out').onclick = async () => { await sb.auth.signOut(); location.href = 'index.html'; };
+
+async function home() {
+  clearInterval(st.t); st = {}; show('home');
+  const { data: rows } = await sb.from('attempts').select('subject,score,total,finished_at,deadline_at').eq('student_id', uid).order('started_at');
+  const all = rows || [], now = Date.now(); let h = '';
+  for (const k in SUBJ) {
+    const pc = all.filter(r => r.subject === k && r.finished_at).map(r => Math.round(100 * r.score / r.total));
+    const open = all.some(r => r.subject === k && !r.finished_at && new Date(r.deadline_at) > now);
+    let lv = 'لم تبدأ بعد', col = '#6b7fa8', avg = '', tr = '';
+    if (pc.length) {
+      const last = pc.slice(-3), a = Math.round(last.reduce((x, y) => x + y, 0) / last.length);
+      [lv, col] = LV(a); avg = (pc.length > 1 ? `متوسط آخر ${last.length} محاولات: ` : 'نتيجة محاولتك الأولى: ') + a + '%';
+      if (pc.length > 1) { const d = pc[pc.length - 1] - pc[pc.length - 2]; tr = d > 0 ? `▲ تحسّن ${d}%` : d < 0 ? `▼ تراجع ${-d}%` : 'ثابت'; }
+    }
+    const bars = pc.slice(-8).map(v => `<i style="height:${Math.max(v, 6)}%;background:${LV(v)[1]}" title="${v}%"></i>`).join('');
+    h += `<div class="panel sub"><h3>${SUBJ[k][1]} ${SUBJ[k][0]}</h3><span class="lv" style="background:${col}">${lv}</span>
+      <p>${avg} ${tr ? '| ' + tr : ''}</p><p>عدد المحاولات: ${pc.length}</p>${bars ? `<div class="bars">${bars}</div>` : ''}
+      <button class="btn" data-k="${k}">${open ? 'متابعة الاختبار' : 'ابدأ اختبار ' + SUBJ[k][0]}</button></div>`;
+  }
+  $('subs').innerHTML = h + '<p class="foot" style="color:#fff">كل اختبار 10 أسئلة، ومدته 45 دقيقة.</p>';
+}
+$('subs').onclick = async e => {
+  const b = e.target.closest('button[data-k]'); if (!b) return;
+  b.disabled = true;
+  const { data, error } = await sb.rpc('start_attempt', { p_subject: b.dataset.k });
+  if (error) { alert(error.message); b.disabled = false; return; }
+  load(data);
+};
+
+async function load(id) {
+  const { data, error } = await sb.rpc('get_attempt', { p_attempt: id });
+  if (error) return alert(error.message);
+  if (data.attempt.finished_at) return result(id);
+  st = { id, qs: data.questions, ans: data.saved, flag: {}, i: 0,
+         off: Date.parse(data.server_now) - Date.now(), dl: Date.parse(data.attempt.deadline_at) };
+  $('tsub').textContent = SUBJ[data.attempt.subject][0];
+  show('quiz'); draw(); tick(); st.t = setInterval(tick, 1000);
+}
+function tick() {
+  const left = st.dl - (Date.now() + st.off);
+  if (left <= 0) { clearInterval(st.t); $('tm').textContent = '00:00'; finish(true); return; }
+  const s = Math.floor(left / 1000);
+  $('tm').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  $('tbar').classList.toggle('low', left < 300000);
+}
+function draw() {
+  const q = st.qs[st.i];
+  $('nav').innerHTML = st.qs.map((x, n) => `<button class="dot ${n === st.i ? 'cur' : ''} ${st.ans[x.id] != null ? 'done' : ''} ${st.flag[x.id] ? 'flag' : ''}" data-n="${n}">${n + 1}</button>`).join('');
+  $('qbox').innerHTML = `<p class="skill">${esc(q.skill || '')}</p><h2>${st.i + 1}. ${esc(q.text)}</h2>` +
+    (q.image_url ? `<img src="${esc(q.image_url)}" alt="">` : '') +
+    q.options.map(o => `<button class="opt ${st.ans[q.id] === o.idx ? 'sel' : ''}" data-o="${o.idx}">${esc(o.text)}</button>`).join('');
+  $('prev').disabled = st.i === 0; $('next').disabled = st.i === st.qs.length - 1;
+  $('flagBtn').textContent = st.flag[q.id] ? 'إلغاء العلامة' : 'علّم للمراجعة';
+}
+$('nav').onclick = e => { const b = e.target.closest('[data-n]'); if (b) { st.i = +b.dataset.n; draw(); } };
+$('prev').onclick = () => { st.i--; draw(); };
+$('next').onclick = () => { st.i++; draw(); };
+$('flagBtn').onclick = () => { const id = st.qs[st.i].id; st.flag[id] = !st.flag[id]; draw(); };
+$('qbox').onclick = async e => {
+  const b = e.target.closest('[data-o]'); if (!b) return;
+  const q = st.qs[st.i]; st.ans[q.id] = +b.dataset.o; draw();
+  const { data, error } = await sb.rpc('save_answer', { p_attempt: st.id, p_question: q.id, p_chosen: +b.dataset.o });
+  if (error) $('saveMsg').textContent = 'تعذّر الحفظ. تحقق من الإنترنت ثم أعد الاختيار.';
+  else if (data !== 'ok') { clearInterval(st.t); result(st.id); }
+  else $('saveMsg').textContent = 'تم حفظ إجابتك.';
+};
+async function finish(auto) {
+  if (!auto) {
+    const un = st.qs.filter(q => st.ans[q.id] == null).length;
+    if (!confirm((un ? `لديك ${un} أسئلة بلا إجابة.\n` : '') + 'هل أنت متأكد من إنهاء الاختبار؟ لن تستطيع الرجوع إليه.')) return;
+  }
+  clearInterval(st.t);
+  const { error } = await sb.rpc('finish_attempt', { p_attempt: st.id });
+  if (error) return alert(error.message);
+  result(st.id);
+}
+$('fin').onclick = () => finish(false);
+document.addEventListener('visibilitychange', () => { if (document.hidden && st.id && !$('quiz').hidden) sb.rpc('log_tab_leave', { p_attempt: st.id }); });
+
+async function result(id) {
+  clearInterval(st.t); show('result');
+  const { data, error } = await sb.rpc('get_result', { p_attempt: id });
+  if (error) return $('rbox').textContent = error.message;
+  const a = data.attempt, [lv, col] = LV(a.pct), txt = (o, i) => (o.find(x => x.idx === i) || {}).text;
+  $('rbox').innerHTML = `<div class="score"><span>${SUBJ[a.subject][0]}</span><big>${a.score} / ${a.total}</big>
+    <span class="lv" style="background:${col}">${a.pct}% - ${lv}</span></div>
+    <div class="rb">${data.items.map(i => `<i class="${i.is_correct ? '' : 'r'}"></i>`).join('')}</div>
+    <p class="hint" style="text-align:center">الأخضر إجابة صحيحة، والأحمر إجابة خاطئة أو بلا إجابة</p>` +
+    data.items.map(i => `<div class="it ${i.is_correct ? '' : 'r'}"><span class="pt">${i.points} / 1</span>
+      <p><b>${i.position}. ${esc(i.text)}</b></p>
+      <p>إجابتك: <span class="${i.is_correct ? 'good' : 'badc'}">${esc(txt(i.options, i.chosen) ?? 'لم تجب')}</span></p>
+      ${i.is_correct ? '' : `<p>الإجابة الصحيحة: <span class="good">${esc(txt(i.options, i.correct) ?? '')}</span></p>`}
+      ${i.explanation ? `<p class="hint">${esc(i.explanation)}</p>` : ''}</div>`).join('') +
+    '<button class="btn" id="back">العودة للرئيسية</button>';
+  $('back').onclick = home;
+}
+init();
+</script>
+</body>
+</html>
